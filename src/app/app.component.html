@@ -105,15 +105,15 @@
 
           <div class="domain-card">
             <span>API</span>
-            <strong>neoapp.api.local.es.bs:3000</strong>
+            <strong>{{ apiBaseUrl }}</strong>
           </div>
 
           <p class="same-site-label" *ngIf="!isCrossSiteTest">
-            Mismo site: <strong>local.es.bs</strong>
+            Mismo site: <strong>{{ sameSiteLabel }}</strong>
           </p>
           <p class="same-site-label" *ngIf="isCrossSiteTest">
             Sites distintos:
-            <strong>local.bancsabadell.com → local.es.bs</strong>
+            <strong>{{ crossSiteLabel }} → {{ sameSiteLabel }}</strong>
           </p>
           <p class="hint">
             La cookie es <code>HttpOnly</code>: se valida mediante la API y no

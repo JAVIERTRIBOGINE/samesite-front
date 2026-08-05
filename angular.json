@@ -33,6 +33,28 @@
             ]
           },
           "configurations": {
+            "local": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.local.ts"
+                }
+              ],
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
+            "dev": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.dev.ts"
+                }
+              ],
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
             "production": {
               "budgets": [
                 {
@@ -54,7 +76,7 @@
               "sourceMap": true
             }
           },
-          "defaultConfiguration": "production"
+          "defaultConfiguration": "dev"
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
@@ -65,6 +87,12 @@
             ]
           },
           "configurations": {
+            "local": {
+              "buildTarget": "samesite-front:build:local"
+            },
+            "dev": {
+              "buildTarget": "samesite-front:build:dev"
+            },
             "production": {
               "buildTarget": "samesite-front:build:production"
             },
@@ -72,7 +100,7 @@
               "buildTarget": "samesite-front:build:development"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "local"
         },
         "test": {
           "builder": "@angular-devkit/build-angular:karma",

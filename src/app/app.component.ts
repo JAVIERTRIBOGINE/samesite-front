@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
+import { environment } from '../environments/environment';
 
 interface ApiResponse {
   success: boolean;
@@ -24,10 +25,12 @@ export class AppComponent {
   sessionVerified = false;
   sessionToken = '';
   readonly currentFrontOrigin = window.location.origin;
-  readonly isCrossSiteTest =
-    window.location.hostname === 'neoapp.cdn.local.bancsabadell.com';
-
-  private readonly apiBaseUrl = 'http://neoapp.api.local.es.bs:3000';
+  readonly apiBaseUrl = environment.apiBaseUrl;
+  readonly sameSiteLabel = environment.sameSiteLabel;
+  readonly crossSiteLabel = environment.crossSiteLabel;
+  readonly isCrossSiteTest = environment.crossSiteHostnames.some(
+    (hostname) => hostname === window.location.hostname
+  );
 
   constructor(private readonly http: HttpClient) {}
 

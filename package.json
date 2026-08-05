@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "ng serve --host neoapp.cdn.local.es.bs --port 4200",
-    "start:bs": "ng serve --host neoapp.cdn.local.bancsabadell.com --port 4200",
-    "build": "ng build",
+    "start": "ng serve --configuration local --host neoapp.cdn.local.es.bs --port 4200",
+    "start:local": "ng serve --configuration local --host neoapp.cdn.local.es.bs --port 4200",
+    "start:local:bs": "ng serve --configuration local --host neoapp.cdn.local.bancsabadell.com --port 4200",
+    "start:dev": "ng serve --configuration dev",
+    "start:bs": "npm run start:local:bs",
+    "build": "ng build --configuration dev",
+    "build:local": "ng build --configuration local",
+    "build:dev": "ng build --configuration dev",
     "test": "ng test --watch=false"
   },
   "engines": {
