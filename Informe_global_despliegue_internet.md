@@ -28,7 +28,7 @@ Los certificados no se generan durante el build. Después de asociar y verificar
 - [Dominios personalizados](https://render.com/docs/custom-domains)
 - [TLS administrado](https://render.com/docs/tls)
 
-## Arquitectura propuesta
+## Arquitectura definitiva
 
 | Proyecto | Tipo en Render | Dominio |
 |---|---|---|
@@ -39,6 +39,195 @@ Los certificados no se generan durante el build. Después de asociar y verificar
 El dominio bueno será un CNAME del dominio nativo del Static Site. Ambos accesos servirán exactamente el mismo artefacto, pero el navegador conservará el hostname que haya introducido el usuario. Ese hostname visible es el que determina el comportamiento same-site o cross-site.
 
 Esta arquitectura necesita dos dominios personalizados: uno para el front y otro para la API. El acceso cross-site utiliza el subdominio `onrender.com` que Render proporciona al Static Site.
+
+> **Importante:** `samesite-front.onrender.com` es el hostname previsto. Al crear el Static Site debe comprobarse el hostname exacto asignado por Render. Si Render añade un sufijo o asigna otro nombre, hay que sustituirlo en el environment del front y en `CORS_ALLOWED_ORIGINS` del backend antes de realizar la prueba definitiva.
+
+El flujo DNS y HTTP será:
+
+```text
+Usuario abre https://front.poc-samesite.es.bs
+                    │
+                    │ DNS CNAME
+                    ▼
+          samesite-front.onrender.com
+                    │
+                    ▼
+          Static Site/CDN de Render
+
+Usuario abre https://samesite-front.onrender.com
+                    │
+                    ▼
+          El mismo Static Site/CDN
+```
+
+La resolución DNS no sustituye el hostname de la barra del navegador. Aunque ambos accesos terminen en el mismo CDN y sirvan el mismo build, el primero se evalúa como `es.bs` y el segundo como `onrender.com`.
+
+## Guía operativa de hosting en Render
+
+### 1. Crear el Static Site del front
+
+En Render, seleccionar **New > Static Site**, conectar GitHub y elegir:
+
+```text
+Repository: JAVIERTRIBOGINE/samesite-front
+Branch: main
+Build command: npm ci && npm run build:dev
+Publish directory: dist/samesite-front/browser
+```
+
+Añadir estas variables de build:
+
+```text
+NODE_VERSION=20.18.1
+SKIP_INSTALL_DEPS=true
+```
+
+Una vez creado, anotar el hostname real asignado por Render. El esperado es:
+
+```text
+https://samesite-front.onrender.com
+```
+
+El dominio nativo `onrender.com` del front debe permanecer habilitado: constituye el acceso cross-site o caso KO de la demostración.
+
+### 2. Sincronizar el hostname real del front
+
+Si el hostname asignado no es exactamente `samesite-front.onrender.com`, sustituirlo en:
+
+```text
+samesite-front/src/environments/environment.ts
+samesite-front/src/environments/environment.dev.ts
+samesite-back/.env.dev
+```
+
+En el front debe quedar:
+
+```typescript
+crossSiteLabel: 'onrender.com',
+crossSiteHostnames: ['<hostname-real-del-front>.onrender.com']
+```
+
+En el backend debe quedar, sin barra final:
+
+```text
+CORS_ALLOWED_ORIGINS=https://front.poc-samesite.es.bs,https://<hostname-real-del-front>.onrender.com
+```
+
+Después de modificar estos valores hay que hacer commit y push para que Render reconstruya el front. El environment de Angular se incrusta en el JavaScript durante el build y no puede corregirse solamente mediante una variable de runtime.
+
+### 3. Asociar el dominio bueno al Static Site
+
+En **Settings > Custom Domains** del Static Site, añadir:
+
+```text
+front.poc-samesite.es.bs
+```
+
+En el proveedor DNS crear el CNAME indicado por Render, conceptualmente:
+
+```dns
+front.poc-samesite.es.bs CNAME samesite-front.onrender.com
+```
+
+Después hay que volver a Render, verificar el dominio y esperar a que el certificado TLS figure como emitido. No se debe crear una redirección HTTP desde el dominio bueno hacia `onrender.com`: debe ser una resolución DNS que conserve `front.poc-samesite.es.bs` en la barra del navegador.
+
+### 4. Crear el Web Service del backend
+
+En Render, seleccionar **New > Web Service**, conectar GitHub y elegir:
+
+```text
+Repository: JAVIERTRIBOGINE/samasite-back
+Branch: main
+Runtime: Node
+Build command: npm ci && npm run build:dev && cd dist && npm ci --omit=dev
+Start command: cd dist && npm start
+Health check path: /health
+```
+
+Configurar en el dashboard de Render:
+
+```text
+NODE_VERSION=20.18.1
+APP_ENV=dev
+HOST=0.0.0.0
+BACK_PUBLIC_ORIGIN=https://api.poc-samesite.es.bs
+SAME_SITE=es.bs
+CORS_ALLOWED_ORIGINS=https://front.poc-samesite.es.bs,https://samesite-front.onrender.com
+SESSION_COOKIE_NAME=POC_SESSION
+SESSION_COOKIE_VALUE=<valor-aleatorio-y-no-publicado>
+SESSION_COOKIE_DOMAIN=poc-samesite.es.bs
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SAME_SITE=strict
+REQUEST_LOG_LIMIT=30
+```
+
+No añadir manualmente `PORT=3000`. Render proporciona `PORT` y la aplicación ya da prioridad a esa variable externa.
+
+Las variables del dashboard prevalecen sobre `.env.dev` y sobre el `.env` copiado al artefacto `dist`. Por ello, el hostname real del front también debe estar correctamente configurado en el dashboard del Web Service.
+
+### 5. Asociar el dominio de la API
+
+En **Settings > Custom Domains** del Web Service, añadir:
+
+```text
+api.poc-samesite.es.bs
+```
+
+Crear en DNS el CNAME que indique Render, verificarlo y esperar a la emisión del certificado. La prueba de cookies debe utilizar siempre:
+
+```text
+https://api.poc-samesite.es.bs
+```
+
+No debe utilizar el subdominio `onrender.com` del backend, porque ese host no puede emitir una cookie válida con `Domain=poc-samesite.es.bs`.
+
+Una vez validado el dominio personalizado de la API, se puede deshabilitar el subdominio `onrender.com` del backend. No debe deshabilitarse el del front.
+
+### 6. Comprobar DNS, TLS y ausencia de redirecciones
+
+```bash
+dig +short CNAME front.poc-samesite.es.bs
+curl -I https://front.poc-samesite.es.bs
+curl -I https://samesite-front.onrender.com
+curl -I https://api.poc-samesite.es.bs/health
+```
+
+Resultados esperados:
+
+- El CNAME del dominio bueno termina en el Static Site de Render.
+- Los dos accesos del front responden por HTTPS.
+- Ambos sirven el mismo build.
+- El acceso bueno no devuelve un `Location` que cambie la URL a `onrender.com`.
+- `/health` devuelve un estado HTTP satisfactorio.
+
+Para demostrar que los dos fronts son espejos se puede comparar el HTML:
+
+```bash
+curl -s https://front.poc-samesite.es.bs/ | shasum -a 256
+curl -s https://samesite-front.onrender.com/ | shasum -a 256
+```
+
+Los hashes deberían coincidir. La IP final no es una evidencia estable, porque Render utiliza infraestructura CDN compartida.
+
+### 7. Ejecutar la demostración funcional
+
+Caso OK:
+
+1. Abrir `https://front.poc-samesite.es.bs`.
+2. Ejecutar `/authenticate`.
+3. Comprobar que el navegador almacena `POC_SESSION` para `poc-samesite.es.bs`.
+4. Ejecutar `/check-session`.
+5. Confirmar que viajan tanto el Bearer token como la cookie.
+
+Caso KO:
+
+1. Abrir `https://samesite-front.onrender.com`.
+2. Ejecutar `/authenticate`.
+3. Confirmar que la respuesta JSON y el token pueden recibirse gracias a CORS.
+4. Comprobar que la cookie `SameSite=Strict` no se almacena o no viaja.
+5. Ejecutar `/check-session` y confirmar el error por ausencia de cookie.
+
+Así se demuestra que el código, el build, el CDN y la API son los mismos, mientras que el resultado cambia exclusivamente por el site de la URL visible en el navegador.
 
 ## Estado de `samesite-front`
 
