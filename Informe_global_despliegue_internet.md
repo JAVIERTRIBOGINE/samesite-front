@@ -23,7 +23,7 @@ Render no ejecuta automáticamente un pipeline de GitHub Actions. Dispone de su 
 
 Documentación: [Conexión de GitHub con Render](https://render.com/docs/github).
 
-Los certificados no se generan durante el build. Después de asociar y verificar cada dominio, Render emite y renueva automáticamente sus certificados TLS y redirige HTTP a HTTPS.
+Después de asociar y verificar cada dominio, Render emite y renueva automáticamente sus certificados TLS y redirige HTTP a HTTPS.
 
 - [Dominios personalizados](https://render.com/docs/custom-domains)
 - [TLS administrado](https://render.com/docs/tls)
@@ -32,9 +32,9 @@ Los certificados no se generan durante el build. Después de asociar y verificar
 
 | Proyecto | Tipo en Render | Dominio |
 |---|---|---|
-| `samesite-front` | Static Site, dominio bueno (caso OK) | `front.poc-samesite.es.bs` |
+| `samesite-front` | Static Site, dominio bueno (caso OK) | `front.poc-ws3.org` |
 | El mismo `samesite-front` | Dominio malo nativo de Render (caso KO) | `samesite-front.onrender.com` |
-| `samesite-back` | Web Service/API del site bueno | `api.poc-samesite.es.bs` |
+| `samesite-back` | Web Service/API del site bueno | `api.poc-ws3.org` |
 
 El dominio bueno será un CNAME del dominio nativo del Static Site. Ambos accesos servirán exactamente el mismo artefacto, pero el navegador conservará el hostname que haya introducido el usuario. Ese hostname visible es el que determina el comportamiento same-site o cross-site.
 
@@ -45,7 +45,7 @@ Esta arquitectura necesita solamente dos dominios personalizados: uno para el ac
 El flujo DNS y HTTP será:
 
 ```text
-Usuario abre https://front.poc-samesite.es.bs
+Usuario abre https://front.poc-ws3.org
                     │
                     │ DNS CNAME
                     ▼
@@ -60,7 +60,7 @@ Usuario abre https://samesite-front.onrender.com
           El mismo Static Site/CDN
 ```
 
-La resolución DNS no sustituye el hostname de la barra del navegador. Aunque ambos accesos terminen en el mismo CDN y sirvan el mismo build, el primero se evalúa como `es.bs` y el segundo como `onrender.com`.
+La resolución DNS no sustituye el hostname de la barra del navegador. Aunque ambos accesos terminen en el mismo CDN y sirvan el mismo build, el primero se evalúa como `poc-ws3.org` y el segundo como `onrender.com`.
 
 ## Guía operativa de hosting en Render
 
@@ -110,7 +110,7 @@ crossSiteHostnames: ['<hostname-real-del-front>.onrender.com']
 En el backend debe quedar, sin barra final:
 
 ```text
-CORS_ALLOWED_ORIGINS=https://front.poc-samesite.es.bs,https://<hostname-real-del-front>.onrender.com
+CORS_ALLOWED_ORIGINS=https://front.poc-ws3.org,https://<hostname-real-del-front>.onrender.com
 ```
 
 Después de modificar estos valores hay que hacer commit y push para que Render reconstruya el front. El environment de Angular se incrusta en el JavaScript durante el build y no puede corregirse solamente mediante una variable de runtime.
@@ -120,16 +120,16 @@ Después de modificar estos valores hay que hacer commit y push para que Render 
 En **Settings > Custom Domains** del Static Site, añadir:
 
 ```text
-front.poc-samesite.es.bs
+front.poc-ws3.org
 ```
 
 En el proveedor DNS crear el CNAME indicado por Render, conceptualmente:
 
 ```dns
-front.poc-samesite.es.bs CNAME samesite-front.onrender.com
+front.poc-ws3.org CNAME samesite-front.onrender.com
 ```
 
-Después hay que volver a Render, verificar el dominio y esperar a que el certificado TLS figure como emitido. No se debe crear una redirección HTTP desde el dominio bueno hacia `onrender.com`: debe ser una resolución DNS que conserve `front.poc-samesite.es.bs` en la barra del navegador.
+Después hay que volver a Render, verificar el dominio y esperar a que el certificado TLS figure como emitido. No se debe crear una redirección HTTP desde el dominio bueno hacia `onrender.com`: debe ser una resolución DNS que conserve `front.poc-ws3.org` en la barra del navegador.
 
 ### 4. Crear el Web Service del backend
 
@@ -150,18 +150,18 @@ Configurar en el dashboard de Render:
 NODE_VERSION=20.18.1
 APP_ENV=dev
 HOST=0.0.0.0
-BACK_PUBLIC_ORIGIN=https://api.poc-samesite.es.bs
-SAME_SITE=es.bs
-CORS_ALLOWED_ORIGINS=https://front.poc-samesite.es.bs,https://samesite-front.onrender.com
+BACK_PUBLIC_ORIGIN=https://api.poc-ws3.org
+SAME_SITE=poc-ws3.org
+CORS_ALLOWED_ORIGINS=https://front.poc-ws3.org,https://samesite-front.onrender.com
 SESSION_COOKIE_NAME=POC_SESSION
 SESSION_COOKIE_VALUE=<valor-aleatorio-y-no-publicado>
-SESSION_COOKIE_DOMAIN=poc-samesite.es.bs
+SESSION_COOKIE_DOMAIN=poc-ws3.org
 SESSION_COOKIE_SECURE=true
 SESSION_COOKIE_SAME_SITE=strict
 REQUEST_LOG_LIMIT=30
 ```
 
-No añadir manualmente `PORT=3000`. Render proporciona `PORT` y la aplicación ya da prioridad a esa variable externa.
+Render proporciona `PORT` y la aplicación ya da prioridad a esa variable externa.
 
 Las variables del dashboard prevalecen sobre `.env.dev` y sobre el `.env` copiado al artefacto `dist`. Por ello, el hostname real del front también debe estar correctamente configurado en el dashboard del Web Service.
 
@@ -170,26 +170,26 @@ Las variables del dashboard prevalecen sobre `.env.dev` y sobre el `.env` copiad
 En **Settings > Custom Domains** del Web Service, añadir:
 
 ```text
-api.poc-samesite.es.bs
+api.poc-ws3.org
 ```
 
 Crear en DNS el CNAME que indique Render, verificarlo y esperar a la emisión del certificado. La prueba de cookies debe utilizar siempre:
 
 ```text
-https://api.poc-samesite.es.bs
+https://api.poc-ws3.org
 ```
 
-No debe utilizar el subdominio `onrender.com` del backend, porque ese host no puede emitir una cookie válida con `Domain=poc-samesite.es.bs`.
+No debe utilizar el subdominio `onrender.com` del backend, porque ese host no puede emitir una cookie válida con `Domain=poc-ws3.org`.
 
 Una vez validado el dominio personalizado de la API, se puede deshabilitar el subdominio `onrender.com` del backend. No debe deshabilitarse el del front.
 
 ### 6. Comprobar DNS, TLS y ausencia de redirecciones
 
 ```bash
-dig +short CNAME front.poc-samesite.es.bs
-curl -I https://front.poc-samesite.es.bs
+dig +short CNAME front.poc-ws3.org
+curl -I https://front.poc-ws3.org
 curl -I https://samesite-front.onrender.com
-curl -I https://api.poc-samesite.es.bs/health
+curl -I https://api.poc-ws3.org/health
 ```
 
 Resultados esperados:
@@ -203,7 +203,7 @@ Resultados esperados:
 Para demostrar que los dos fronts son espejos se puede comparar el HTML:
 
 ```bash
-curl -s https://front.poc-samesite.es.bs/ | shasum -a 256
+curl -s https://front.poc-ws3.org/ | shasum -a 256
 curl -s https://samesite-front.onrender.com/ | shasum -a 256
 ```
 
@@ -213,9 +213,9 @@ Los hashes deberían coincidir. La IP final no es una evidencia estable, porque 
 
 Caso OK:
 
-1. Abrir `https://front.poc-samesite.es.bs`.
+1. Abrir `https://front.poc-ws3.org`.
 2. Ejecutar `/authenticate`.
-3. Comprobar que el navegador almacena `POC_SESSION` para `poc-samesite.es.bs`.
+3. Comprobar que el navegador almacena `POC_SESSION` para `poc-ws3.org`.
 4. Ejecutar `/check-session`.
 5. Confirmar que viajan tanto el Bearer token como la cookie.
 
@@ -245,8 +245,8 @@ El front:
 La configuración `dev` utiliza:
 
 ```text
-API: https://api.poc-samesite.es.bs
-Dominio OK: https://front.poc-samesite.es.bs
+API: https://api.poc-ws3.org
+Dominio OK: https://front.poc-ws3.org
 Dominio KO: https://samesite-front.onrender.com
 ```
 
@@ -323,12 +323,12 @@ Variables recomendadas:
 NODE_VERSION=20.18.1
 APP_ENV=dev
 HOST=0.0.0.0
-BACK_PUBLIC_ORIGIN=https://api.poc-samesite.es.bs
-SAME_SITE=es.bs
-CORS_ALLOWED_ORIGINS=https://front.poc-samesite.es.bs,https://samesite-front.onrender.com
+BACK_PUBLIC_ORIGIN=https://api.poc-ws3.org
+SAME_SITE=poc-ws3.org
+CORS_ALLOWED_ORIGINS=https://front.poc-ws3.org,https://samesite-front.onrender.com
 SESSION_COOKIE_NAME=POC_SESSION
 SESSION_COOKIE_VALUE=<valor-aleatorio>
-SESSION_COOKIE_DOMAIN=poc-samesite.es.bs
+SESSION_COOKIE_DOMAIN=poc-ws3.org
 SESSION_COOKIE_SECURE=true
 SESSION_COOKIE_SAME_SITE=strict
 REQUEST_LOG_LIMIT=30
@@ -345,7 +345,7 @@ Documentación: [Variables y secretos en Render](https://render.com/docs/configu
 La configuración es correcta para los dominios definitivos:
 
 ```text
-https://front.poc-samesite.es.bs
+https://front.poc-ws3.org
 https://samesite-front.onrender.com
 ```
 
@@ -366,7 +366,7 @@ El hostname concreto `https://samesite-front.onrender.com` está autorizado expr
 La cookie se genera con los siguientes atributos:
 
 ```text
-Domain=poc-samesite.es.bs
+Domain=poc-ws3.org
 Path=/
 HttpOnly
 Secure
@@ -376,8 +376,8 @@ SameSite=Strict
 ### Caso OK: same-site
 
 ```text
-Front: https://front.poc-samesite.es.bs
-API:   https://api.poc-samesite.es.bs
+Front: https://front.poc-ws3.org
+API:   https://api.poc-ws3.org
 ```
 
 Son orígenes distintos, por lo que necesitan CORS, pero pertenecen al mismo site. La cookie `Strict` debería almacenarse y viajar en `/check-session`.
@@ -386,7 +386,7 @@ Son orígenes distintos, por lo que necesitan CORS, pero pertenecen al mismo sit
 
 ```text
 Front: https://samesite-front.onrender.com
-API:   https://api.poc-samesite.es.bs
+API:   https://api.poc-ws3.org
 ```
 
 Es una petición cross-site. La llamada CORS puede completarse y el front puede recibir el JSON y el token, pero el navegador debería impedir que la cookie `Strict` se establezca o que viaje posteriormente. Como consecuencia, `/check-session` fallará por ausencia de cookie.
@@ -403,10 +403,10 @@ Un backend servido desde una dirección como:
 https://samesite-back.onrender.com
 ```
 
-no puede establecer válidamente una cookie para `poc-samesite.es.bs`. Antes de ejecutar la prueba debe estar operativo:
+no puede establecer válidamente una cookie para `poc-ws3.org`. Antes de ejecutar la prueba debe estar operativo:
 
 ```text
-https://api.poc-samesite.es.bs
+https://api.poc-ws3.org
 ```
 
 Por tanto, debe mantenerse habilitado el subdominio `onrender.com` del front y puede desactivarse el del backend después de validar su dominio personalizado.
@@ -476,8 +476,8 @@ El backend conserva `/check-iframe-session`, aunque `samesite-front` ya no conti
 Para cada subdominio deberá añadirse normalmente un registro `CNAME` apuntando al hostname `onrender.com` correspondiente:
 
 ```text
-front.poc-samesite.es.bs       CNAME -> samesite-front.onrender.com
-api.poc-samesite.es.bs         CNAME -> servicio backend de Render
+front.poc-ws3.org       CNAME -> samesite-front.onrender.com
+api.poc-ws3.org         CNAME -> servicio backend de Render
 ```
 
 Secuencia recomendada:
