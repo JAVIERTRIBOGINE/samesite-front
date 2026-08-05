@@ -2,6 +2,6 @@ export const environment = {
   production: false,
   apiBaseUrl: 'https://api.poc-samesite.es.bs',
   sameSiteLabel: 'es.bs',
-  crossSiteLabel: 'bancsabadell.com',
-  crossSiteHostnames: ['front.mock.bancsabadell.com']
+  crossSiteLabel: 'onrender.com',
+  crossSiteHostnames: ['samesite-front.onrender.com']
 } as const;
