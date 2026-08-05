@@ -6,6 +6,7 @@ interface ApiResponse {
   success: boolean;
   message: string;
   receivedCookie?: string;
+  token?: string;
 }
 
 @Component({
@@ -21,6 +22,7 @@ export class AppComponent {
   result: ApiResponse | null = null;
   loading = false;
   sessionVerified = false;
+  sessionToken = '';
   readonly currentFrontOrigin = window.location.origin;
   readonly isCrossSiteTest =
     window.location.hostname === 'neoapp.cdn.local.bancsabadell.com';
@@ -45,6 +47,7 @@ export class AppComponent {
     this.loading = true;
     this.result = null;
     this.sessionVerified = false;
+    this.sessionToken = '';
 
     this.http.post<ApiResponse>(
       `${this.apiBaseUrl}/authenticate`,
@@ -57,6 +60,16 @@ export class AppComponent {
       }
     ).subscribe({
       next: (response) => {
+        if (!response.token) {
+          this.result = {
+            success: false,
+            message: 'La autenticación no ha devuelto el token de centro.'
+          };
+          this.loading = false;
+          return;
+        }
+
+        this.sessionToken = response.token;
         this.result = response;
         this.loading = false;
       },
@@ -71,7 +84,10 @@ export class AppComponent {
     this.http.get<ApiResponse>(
       `${this.apiBaseUrl}/check-session`,
       {
-        withCredentials: true
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${this.sessionToken}`
+        }
       }
     ).subscribe({
       next: (response) => {
