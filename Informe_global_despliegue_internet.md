@@ -32,13 +32,13 @@ Los certificados no se generan durante el build. Después de asociar y verificar
 
 | Proyecto | Tipo en Render | Dominio |
 |---|---|---|
-| `samesite-front` | Static Site | `front.poc-samesite.es.bs` |
-| El mismo `samesite-front` | Dominio nativo de Render (caso KO) | `samesite-front.onrender.com` |
-| `samesite-back` | Web Service | `api.poc-samesite.es.bs` |
+| `samesite-front` | Static Site, dominio bueno (caso OK) | `front.poc-samesite.es.bs` |
+| El mismo `samesite-front` | Dominio malo nativo de Render (caso KO) | `samesite-front.onrender.com` |
+| `samesite-back` | Web Service/API del site bueno | `api.poc-samesite.es.bs` |
 
 El dominio bueno será un CNAME del dominio nativo del Static Site. Ambos accesos servirán exactamente el mismo artefacto, pero el navegador conservará el hostname que haya introducido el usuario. Ese hostname visible es el que determina el comportamiento same-site o cross-site.
 
-Esta arquitectura necesita dos dominios personalizados: uno para el front y otro para la API. El acceso cross-site utiliza el subdominio `onrender.com` que Render proporciona al Static Site.
+Esta arquitectura necesita solamente dos dominios personalizados: uno para el acceso bueno al front y otro para la API. No existe un segundo dominio personalizado para el front. El dominio malo es el subdominio `onrender.com` que Render proporciona de forma nativa al Static Site.
 
 > **Importante:** `samesite-front.onrender.com` es el hostname previsto. Al crear el Static Site debe comprobarse el hostname exacto asignado por Render. Si Render añade un sufijo o asigna otro nombre, hay que sustituirlo en el environment del front y en `CORS_ALLOWED_ORIGINS` del backend antes de realizar la prueba definitiva.
 
