@@ -1,0 +1,126 @@
+<main class="page">
+  <section class="login-section" aria-labelledby="page-title">
+    <div class="login-row">
+      <section class="login-column">
+        <div class="logo-container" aria-label="Banco Sabadell">
+          <span class="logo-symbol" aria-hidden="true">B</span>
+          <span class="logo-text">Sabadell</span>
+        </div>
+
+        <header class="heading">
+          <p class="eyebrow">Prueba local de dominios alineados</p>
+          <h1 id="page-title">POC SameSite Strict</h1>
+          <p>
+            Autentícate para emitir la cookie y comprueba después que el
+            navegador la envía a la API en una petición posterior.
+          </p>
+          <div
+            *ngIf="isCrossSiteTest"
+            class="cross-site-notice"
+            role="status"
+          >
+            <strong>Modo de prueba cross-site</strong>
+            <span>
+              Resultado esperado: el login responde, pero la comprobación de
+              sesión devuelve 401 porque la cookie Strict no viaja.
+            </span>
+          </div>
+        </header>
+
+        <form class="credentials-form" (submit)="login(); $event.preventDefault()">
+          <label class="form-field">
+            <span>Usuario</span>
+            <input
+              type="text"
+              name="USERNAME"
+              autocomplete="username"
+              required
+              [value]="username"
+              (input)="onUsernameChange($event)"
+            >
+          </label>
+
+          <label class="form-field">
+            <span>Contraseña</span>
+            <input
+              type="password"
+              name="PASSWORD"
+              autocomplete="current-password"
+              required
+              [value]="password"
+              (input)="onPasswordChange($event)"
+            >
+          </label>
+
+          <div class="actions">
+            <button
+              class="primary"
+              type="submit"
+              [disabled]="!credentialsValid || loading"
+            >
+              Emitir cookie
+            </button>
+            <button
+              class="secondary"
+              type="button"
+              [disabled]="loading"
+              (click)="checkSession()"
+            >
+              Comprobar cookie
+            </button>
+          </div>
+        </form>
+
+        <p class="loading" *ngIf="loading" role="status">
+          Procesando petición…
+        </p>
+
+        <section
+          *ngIf="result"
+          class="result"
+          [class.success]="result.success"
+          [class.error]="!result.success"
+          aria-live="polite"
+        >
+          <strong>{{ result.success ? 'Correcto' : 'No validado' }}</strong>
+          <p>{{ result.message }}</p>
+          <code *ngIf="result.receivedCookie">
+            POC_SESSION={{ result.receivedCookie }}
+          </code>
+        </section>
+      </section>
+
+      <aside class="information-column" aria-labelledby="information-title">
+        <div class="poc-information">
+          <h2 id="information-title" class="information-title">
+            ¿Qué valida esta POC?
+          </h2>
+
+          <div class="domain-card">
+            <span>Front</span>
+            <strong>{{ currentFrontOrigin }}</strong>
+          </div>
+
+          <div class="domain-connector" aria-hidden="true">↓</div>
+
+          <div class="domain-card">
+            <span>API</span>
+            <strong>neoapp.api.local.es.bs:3000</strong>
+          </div>
+
+          <p class="same-site-label" *ngIf="!isCrossSiteTest">
+            Mismo site: <strong>local.es.bs</strong>
+          </p>
+          <p class="same-site-label" *ngIf="isCrossSiteTest">
+            Sites distintos:
+            <strong>local.bancsabadell.com → local.es.bs</strong>
+          </p>
+          <p class="hint">
+            La cookie es <code>HttpOnly</code>: se valida mediante la API y no
+            con <code>document.cookie</code>.
+          </p>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>
